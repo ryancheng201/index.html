@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>木地板訂製試算與報價系統</title>
+  <style>
+    :root {
+      --primary: #4a3427;
+      --primary-hover: #36251b;
+      --bg: #f8f6f2;
+      --card-bg: #ffffff;
+      --border: #dfd7ce;
+      --accent: #b45309;
+      --text: #2c221e;
+      --text-muted: #73645c;
+      --warn-bg: #fffbeb;
+      --warn-border: #fef08a;
+      --warn-text: #854d0e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif; }
+    body { background-color: var(--bg); color: var(--text); line-height: 1.5; padding: 16px; }
+    .wrapper { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 20px; }
+
+    header { text-align: center; margin-bottom: 8px; }
+    header h1 { font-size: 22px; color: var(--primary); font-weight: 700; }
+    header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+    .card-title { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 16px; border-left: 4px solid var(--accent); padding-left: 8px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; color: var(--text); }
+    select, input[type="text"], input[type="number"] {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 14px; background: #fff; color: var(--text); outline: none; transition: border 0.2s;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+
+    .sub-select { background: #faf8f5; border: 1px dashed var(--border); padding: 10px; border-radius: 6px; margin-top: -6px; margin-bottom: 14px; }
+
+    .alert { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); padding: 10px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 16px; }
+    .alert ul { padding-left: 18px; margin: 0; }
+
+    .live-calc { background: #fdfbf7; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+    .calc-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 6px; }
+    .calc-row.total { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; font-size: 17px; font-weight: 700; color: var(--accent); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 10px 16px; font-size: 14px; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: background 0.2s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
+    .btn-outline:hover { background: #eee8e0; }
+
+    /* 清單表格 */
+    .table-container { overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th { background: #f5f1ea; padding: 10px; font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+    .table-summary { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--border); font-size: 16px; font-weight: 700; }
+    .btn-del { color: #dc2626; background: none; border: none; cursor: pointer; font-size: 13px; }
+
+    /* 列印樣式 */
+    @media print {
+      body { background: #fff; padding: 0; }
+      .wrapper { max-width: 100%; display: block; }
+      .no-print { display: none !important; }
+      .card { border: none; box-shadow: none; padding: 0; }
+      th, td { border-bottom: 1px solid #ccc; }
+    }
+
+    @media (min-width: 768px) {
+      .wrapper { grid-template-columns: 1.1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <!-- 左側：規格選擇區 -->
+  <div class="card no-print">
+    <div class="card-title">規格與施工設定</div>
+
+    <div class="form-group">
+      <label>空間或項目名稱</label>
+      <input type="text" id="areaName" placeholder="例如：客廳、主臥、書房" value="客廳">
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label>木種（基價）</label>
+        <select id="woodType" onchange="runCalc()">
+          <option value="5200" data-name="水曲橡木">水曲橡木 ($5,200)</option>
+          <option value="6300" data-name="白橡木" selected>白橡木 ($6,300)</option>
+          <option value="6300" data-name="白栓木">白栓木 ($6,300)</option>
+          <option value="8800" data-name="柚木">柚木 ($8,800)</option>
+          <option value="8800" data-name="紫檀木">紫檀木 ($8,800)</option>
+          <option value="6300" data-name="山毛櫸">山毛櫸 ($6,300)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>實木厚度</label>
+        <select id="thickness" onchange="runCalc()">
+          <option value="0" data-name="100條">100條 (+$0)</option>
+          <option value="1000" data-name="200條" selected>200條 (+$1,000)</option>
+          <option value="2000" data-name="300條">300條 (+$2,000)</option>
+          <option value="4500" data-name="400條">400條 (+$4,500)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label>材料寬度</label>
+        <select id="width" onchange="runCalc()">
+          <option value="0" data-name="5.4寸">5.4寸 (+$0)</option>
+          <option value="500" data-name="6.4寸">6.4寸 (+$500)</option>
+          <option value="800" data-name="7.8寸">7.8寸 (+$800)</option>
+          <option value="1200" data-name="8寸">8寸 (+$1,200)</option>
+          <option value="2800" data-name="1尺寬">1尺寬 (+$2,800)</option>
+          <option value="0" data-name="人字型" data-custom="true">人字型（尺寸另訂）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>材料長度</label>
+        <select id="length" onchange="runCalc()">
+          <option value="0" data-name="4–6尺">4–6尺 (+$0)</option>
+          <option value="300" data-name="6尺">6尺 (+$300)</option>
+          <option value="1500" data-name="8尺">8尺 (+$1,500)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-group">
+        <label>面材處理</label>
+        <select id="surface" onchange="runCalc()">
+          <option value="0" data-name="全平面">全平面 (+$0)</option>
+          <option value="0" data-name="大浮雕">大浮雕 (+$0)</option>
+          <option value="800" data-name="手刮">手刮 (+$800)</option>
+          <option value="1200" data-name="大斜角">大斜角 (+$1,200)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>面漆材質</label>
+        <select id="paint" onchange="runCalc()">
+          <option value="1500" data-name="亮面漆">亮面漆 (+$1,500)</option>
+          <option value="1500" data-name="消光漆" selected>消光漆（3分光）(+$1,500)</option>
+          <option value="1500" data-name="透氣漆">透氣漆 (+$1,500)</option>
+          <option value="1900" data-name="環保面漆">環保面漆 (+$1,900)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>施工主方式</label>
+      <select id="installMain" onchange="toggleInstallSub()">
+        <option value="sealing" data-name="封板式">封板式 (+$1,200)</option>
+        <option value="plywood" data-name="夾面式">夾面式（需選夾面板厚）</option>
+        <option value="raised" data-name="架高式">架高式（需選架高方式）</option>
+      </select>
+    </div>
+
+    <!-- 夾面式連動 -->
+    <div id="plywoodBox" class="sub-select" style="display:none;">
+      <label>夾面板厚</label>
+      <select id="plywoodThick" onchange="runCalc()">
+        <option value="2800" data-name="4分板">4分板 (+$2,800)</option>
+        <option value="3509" data-name="5分板" selected>5分板 (+$3,509)</option>
+        <option value="4000" data-name="6分板">6分板 (+$4,000)</option>
+      </select>
+    </div>
+
+    <!-- 架高式連動 -->
+    <div id="raisedBox" class="sub-select" style="display:none;">
+      <label>架高方式</label>
+      <select id="raisedType" onchange="runCalc()">
+        <option value="1500" data-name="單層架高">單層架高 (+$1,500)</option>
+        <option value="2500" data-name="雙層架高">雙層架高 (+$2,500)</option>
+        <option value="3500" data-name="合室架高" data-tatami="true">合室架高 (+$3,500 起)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>施作坪數（數量/坪）</label>
+      <input type="number" id="area" value="10" min="0.1" step="0.1" oninput="runCalc()">
+    </div>
+
+    <!-- 提醒事項 -->
+    <div class="alert" id="noticeArea">
+      <ul id="noticeList"></ul>
+    </div>
+
+    <!-- 當前試算卡片 -->
+    <div class="live-calc">
+      <div class="calc-row">
+        <span>每坪單價（材+工）：</span>
+        <strong id="liveUnit">$0</strong>
+      </div>
+      <div class="calc-row">
+        <span>顏色 / 打樣：</span>
+        <span>不限，打樣確認</span>
+      </div>
+      <div class="calc-row total">
+        <span>此項預估金額：</span>
+        <span id="liveTotal">$0</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="addItemToList()">＋ 加入報價清單</button>
+  </div>
+
+  <!-- 右側：報價清單匯總與匯出 -->
+  <div class="card">
+    <header>
+      <h1>木地板工程報價單</h1>
+      <p id="todayDate"></p>
+    </header>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>空間</th>
+            <th>規格摘要</th>
+            <th>單價/坪</th>
+            <th>坪數</th>
+            <th>小計</th>
+            <th class="no-print">操作</th>
+          </tr>
+        </thead>
+        <tbody id="quoteBody">
+          <tr>
+            <td colspan="6" style="text-align: center; color: #999; padding: 24px 0;">尚未加入任何項目，請從左側設定並加入。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-summary" id="summaryBox" style="display:none;">
+      <span>合計坪數：<span id="sumArea">0</span> 坪</span>
+      <span style="color: var(--accent);">預估總金額：$<span id="sumPrice">0</span></span>
+    </div>
+
+    <div class="no-print" style="margin-top: 20px;">
+      <button class="btn btn-primary" onclick="copyLineText()">複製 LINE 報價文字</button>
+      <button class="btn btn-outline" onclick="window.print()">列印 / 另存 PDF</button>
+      <button class="btn btn-outline" style="color: #999;" onclick="clearAllItems()">清空重設</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let items = [];
+
+  function toggleInstallSub() {
+    const main = document.getElementById('installMain').value;
+    document.getElementById('plywoodBox').style.display = (main === 'plywood') ? 'block' : 'none';
+    document.getElementById('raisedBox').style.display = (main === 'raised') ? 'block' : 'none';
+    runCalc();
+  }
+
+  function getSelectedDetails() {
+    const wood = document.getElementById('woodType');
+    const thick = document.getElementById('thickness');
+    const width = document.getElementById('width');
+    const len = document.getElementById('length');
+    const surf = document.getElementById('surface');
+    const paint = document.getElementById('paint');
+    const installMain = document.getElementById('installMain');
+
+    const isHerringbone = width.selectedOptions[0].getAttribute('data-custom') === 'true';
+
+    let installCost = 0;
+    let installDesc = installMain.selectedOptions[0].getAttribute('data-name');
+    let isTatami = false;
+
+    if (installMain.value === 'sealing') {
+      installCost = 1200;
+    } else if (installMain.value === 'plywood') {
+      const ply = document.getElementById('plywoodThick');
+      installCost = Number(ply.value);
+      installDesc = `夾面式(${ply.selectedOptions[0].getAttribute('data-name')})`;
+    } else if (installMain.value === 'raised') {
+      const rsd = document.getElementById('raisedType');
+      installCost = Number(rsd.value);
+      installDesc = `架高式(${rsd.selectedOptions[0].getAttribute('data-name')})`;
+      isTatami = rsd.selectedOptions[0].getAttribute('data-tatami') === 'true';
+    }
+
+    const unitPrice = Number(wood.value) + Number(thick.value) + Number(width.value) +
+                      Number(len.value) + Number(surf.value) + Number(paint.value) + installCost;
+
+    const area = parseFloat(document.getElementById('area').value) || 0;
+    const subtotal = Math.round(unitPrice * area);
+
+    const specSummary = `${wood.selectedOptions[0].getAttribute('data-name')} / ` +
+                        `${thick.selectedOptions[0].getAttribute('data-name')} / ` +
+                        `${width.selectedOptions[0].getAttribute('data-name')} / ` +
+                        `${len.selectedOptions[0].getAttribute('data-name')} / ` +
+                        `${surf.selectedOptions[0].getAttribute('data-name')} / ` +
+                        `${paint.selectedOptions[0].getAttribute('data-name')} / ` +
+                        `${installDesc}`;
+
+    return {
+      areaName: document.getElementById('areaName').value.trim() || '未命名空間',
+      unitPrice,
+      area,
+      subtotal,
+      specSummary,
+      isHerringbone,
+      isTatami
+    };
+  }
+
+  function runCalc() {
+    const data = getSelectedDetails();
+
+    document.getElementById('liveUnit').textContent = '$' + data.unitPrice.toLocaleString('zh-TW');
+    document.getElementById('liveTotal').textContent = '$' + data.subtotal.toLocaleString('zh-TW');
+
+    const notices = [];
+    if (data.isHerringbone) notices.push('人字型尺寸／價格另訂，目前未計入寬度加價。');
+    if (data.isTatami) notices.push('合室架高以 3,500 元起算，實際價格另議。');
+    notices.push('顏色不限，需製作樣品確認。');
+
+    const listEl = document.getElementById('noticeList');
+    listEl.innerHTML = notices.map(n => `<li>${n}</li>`).join('');
+  }
+
+  function addItemToList() {
+    const data = getSelectedDetails();
+    if (data.area <= 0) {
+      alert('請輸入有效的施作坪數');
+      return;
+    }
+    items.push(data);
+    renderTable();
+  }
+
+  function removeItem(index) {
+    items.splice(index, 1);
+    renderTable();
+  }
+
+  function clearAllItems() {
+    if (items.length === 0) return;
+    if (confirm('確定清空所有報價項目？')) {
+      items = [];
+      renderTable();
+    }
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('quoteBody');
+    const summaryBox = document.getElementById('summaryBox');
+
+    if (items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999; padding: 24px 0;">尚未加入任何項目，請從左側設定並加入。</td></tr>';
+      summaryBox.style.display = 'none';
+      return;
+    }
+
+    let totalArea = 0;
+    let totalPrice = 0;
+
+    tbody.innerHTML = items.map((item, idx) => {
+      totalArea += item.area;
+      totalPrice += item.subtotal;
+      return `
+        <tr>
+          <td><strong>${item.areaName}</strong></td>
+          <td style="font-size:12px; color:#555;">${item.specSummary}</td>
+          <td>$${item.unitPrice.toLocaleString('zh-TW')}</td>
+          <td>${item.area}</td>
+          <td><strong>$${item.subtotal.toLocaleString('zh-TW')}</strong></td>
+          <td class="no-print"><button class="btn-del" onclick="removeItem(${idx})">刪除</button></td>
+        </tr>
+      `;
+    }).join('');
+
+    document.getElementById('sumArea').textContent = (Math.round(totalArea * 100) / 100).toLocaleString('zh-TW');
+    document.getElementById('sumPrice').textContent = totalPrice.toLocaleString('zh-TW');
+    summaryBox.style.display = 'flex';
+  }
+
+  function copyLineText() {
+    if (items.length === 0) {
+      alert('清單內目前無資料，請先新增項目。');
+      return;
+    }
+
+    let totalArea = 0;
+    let totalPrice = 0;
+
+    let text = '【木地板訂製工程預估單】\n';
+    text += '--------------------------------\n';
+    items.forEach((item, i) => {
+      totalArea += item.area;
+      totalPrice += item.subtotal;
+      text += `${i + 1}. 【${item.areaName}】\n`;
+      text += `   規格：${item.specSummary}\n`;
+      text += `   單價：$${item.unitPrice.toLocaleString('zh-TW')} / 坪\n`;
+      text += `   坪數：${item.area} 坪\n`;
+      text += `   小計：$${item.subtotal.toLocaleString('zh-TW')} 元\n\n`;
+    });
+    text += '--------------------------------\n';
+    text += `合計總坪數：${Math.round(totalArea * 100) / 100} 坪\n`;
+    text += `預估總金額：$${totalPrice.toLocaleString('zh-TW')} 元\n`;
+    text += '※ 備註：顏色不限需打樣確認；實際金額依現場放樣與訂單規格為準。';
+
+    navigator.clipboard.writeText(text).then(() => {
+      alert('已成功複製報價文字，可直接貼至 LINE！');
+    }).catch(() => {
+      alert('複製失敗，請手動選取文字。');
+    });
+  }
+
+  // 初始化日期與計算
+  document.getElementById('todayDate').textContent = '估價日期：' + new Date().toLocaleDateString('zh-TW');
+  runCalc();
+</script>
+</body>
+</html>
